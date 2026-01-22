@@ -1,4 +1,4 @@
-from curl_cffi import requests
+from curl_cffi import requests  
 import yfinance as yf
 from openai import OpenAI
 from bs4 import BeautifulSoup
@@ -39,51 +39,68 @@ class DataFetcher:
         except: pass
 
     # =========================================================
-    # 1. 시장 데이터 (변동 없음)
+    # 1. 시장 데이터 (curl_cffi 세션 주입 적용)
     # =========================================================
     def get_market_data(self, ticker, default_shares, company_name=None):
-        stock_price = self._get_stock_price(ticker)
-        if stock_price is None:
-             stock_price = self.cache.get(ticker, {}).get('price', 2.50)
-
-        crypto_price = self._get_crypto_price()
+        
+        # 기본값 설정
+        stock_price = None
+        crypto_price = 3000.0
         
         try:
             shares_out = float(default_shares)
         except:
-            shares_out = 454862451.0 
-            
+            shares_out = 454862451.0
+
+        # -----------------------------------------------
+        # [핵심] Yahoo Finance 데이터 가져오기 (차단 회피)
+        # -----------------------------------------------
         try:
+            # 1. 크롬 브라우저인 척하는 세션 생성
             session = requests.Session(impersonate="chrome")
+            
+            # 2. yfinance에 세션 주입
             stock = yf.Ticker(ticker, session=session)
+            
+            # 주가 조회
+            hist = stock.history(period="1d")
+            if not hist.empty:
+                stock_price = float(hist['Close'].iloc[-1])
+                self._update_cache(ticker, stock_price) # 성공 시 캐시 저장
+            else:
+                # 실패 시 캐시된 값 사용하거나 안전장치 값 사용
+                stock_price = self.cache.get(ticker, {}).get('price', 29.35)
+
+            # 주식 수 조회
             info = stock.info
             if 'sharesOutstanding' in info and info['sharesOutstanding']:
                 shares_out = info['sharesOutstanding']
-        except: pass
+                print(f"📡 API 주식 수 수신 성공: {shares_out:,.0f} 주")
+                
+        except Exception as e:
+            print(f"⚠️ Yahoo Finance 접속 에러: {e}")
+            # 에러 나면 캐시값 혹은 29.35 사용 (절대 2.50 아님!)
+            stock_price = self.cache.get(ticker, {}).get('price', 29.35)
+
+        # -----------------------------------------------
+        # Crypto Price (CoinGecko)
+        # -----------------------------------------------
+        try:
+            # 위에서 만든 세션 재활용
+            url = "https://api.coingecko.com/api/v3/simple/price"
+            resp = session.get(url, params={"ids": "ethereum", "vs_currencies": "usd"}, timeout=10)
+            crypto_price = float(resp.json()['ethereum']['usd'])
+        except: 
+            crypto_price = 3000.0
         
         return stock_price, crypto_price, shares_out
 
-    def _get_stock_price(self, ticker):
-        try:
-            session = requests.Session(impersonate="chrome")
-            stock = yf.Ticker(ticker, session=session)
-            hist = stock.history(period="1d")
-            if not hist.empty:
-                price = float(hist['Close'].iloc[-1])
-                self._update_cache(ticker, price)
-                return price
-        except: return None
-
-    def _get_crypto_price(self):
-        try:
-            url = "https://api.coingecko.com/api/v3/simple/price"
-            session = requests.Session(impersonate="chrome")
-            resp = session.get(url, params={"ids": "ethereum", "vs_currencies": "usd"}, timeout=10)
-            return float(resp.json()['ethereum']['usd'])
-        except: return 3000.0
+    def _update_cache(self, ticker, price):
+        self.cache[ticker] = {'price': price, 'date': datetime.now().strftime('%Y-%m-%d')}
+        self._save_cache()
 
     # =========================================================
-    # 2. 보유량 데이터 (여기가 핵심!)
+    # 2. 보유량 데이터 (OpenAI + curl_cffi)
     # =========================================================
     def get_holdings_from_news(self, pr_url, default_holdings):
         
@@ -99,7 +116,6 @@ class DataFetcher:
             
             # 검색 결과 텍스트만 추출
             text_content = soup.get_text(separator=' ', strip=True)[:6000]
-            # print(f"DEBUG: 수집된 텍스트 길이: {len(text_content)}자") 
             
         except Exception as e:
             print(f"⚠️ 검색 접속 실패: {e}")
@@ -108,7 +124,7 @@ class DataFetcher:
         # 2. ChatGPT에게 분석 시키기
         if self.client:
             try:
-                # AI에게 내리는 아주 구체적인 지령
+                # AI에게 내리는 지령
                 prompt = f"""
                 You are a sophisticated financial data analyst.
                 I have provided the text from a Google News search result for 'BitMine Immersion Technologies'.
