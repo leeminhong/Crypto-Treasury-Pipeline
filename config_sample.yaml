@@ -1,0 +1,10 @@
+companies:
+  - name: BitMine Immersion Technologies Inc.
+    ticker: BMNR
+    crypto: ETH
+    default_shares: 454862451
+    default_holdings: 416800      
+    pr_url: "https://www.google.com/search?q=BitMine+Immersion+Technologies+ETH+holdings+treasury+update&tbm=nws"
+
+# 사용자는 여기에 본인의 키를 입력하세요
+openai_api_key: "YOUR_OPENAI_API_KEY_HERE"

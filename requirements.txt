@@ -1,0 +1,8 @@
+yfinance
+pandas
+matplotlib
+jinja2
+beautifulsoup4
+curl-cffi
+pyyaml
+openai
