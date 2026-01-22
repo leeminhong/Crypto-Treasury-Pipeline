@@ -1,8 +1,0 @@
-requests
-yfinance
-beautifulsoup4
-lxml
-matplotlib
-jinja2
-pyyaml
-pandas
