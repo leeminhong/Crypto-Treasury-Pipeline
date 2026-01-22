@@ -6,6 +6,8 @@
 - **AI 기반 분석:** Google 뉴스 검색 결과를 **ChatGPT(GPT-4o-mini)**가 분석하여, 최신 ETH 보유량을 스스로 찾아냅니다.
 - **실시간 데이터:** `yfinance`와 `CoinGecko` API를 통해 주가와 코인 가격을 실시간으로 반영합니다.
 - **자동 리포트:** 분석 결과와 투자 지표(Premium %)가 담긴 깔끔한 HTML 리포트를 생성합니다.
+<img width="885" height="724" alt="image" src="https://github.com/user-attachments/assets/6f903a07-aaf6-49ca-9bc5-17caac1f296f" />
+
 
 ## 기술 스택
 - **Language:** Python
